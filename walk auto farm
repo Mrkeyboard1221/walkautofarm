@@ -1,0 +1,74 @@
+local player = game.Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+local screenGui = Instance.new("ScreenGui")
+screenGui.Parent = playerGui
+screenGui.ResetOnSpawn = false  -- Keeps UI when respawning
+
+local button = Instance.new("TextButton")
+button.Parent = screenGui
+button.Size = UDim2.new(0, 200, 0, 50)
+button.Position = UDim2.new(0.5, -100, 0.5, -25)  -- Centered
+button.Text = "Auto-Farm: OFF"
+button.BackgroundColor3 = Color3.fromRGB(255, 0, 0)  -- Red for OFF
+button.TextScaled = true
+button.Font = Enum.Font.SourceSansBold
+button.Draggable = true
+button.Active = true
+button.Selectable = true
+
+-- Define variables
+local collectiblesParent = workspace:WaitForChild("Collectibles")
+local teleportRadius = 50  
+local autoFarmEnabled = false
+
+local function getHumanoidRootPart()
+    local character = player.Character or player.CharacterAdded:Wait()
+    return character:WaitForChild("HumanoidRootPart")
+end
+
+-- Function to move character smoothly to the token
+local function moveToToken(targetPosition)
+    local humanoidRootPart = getHumanoidRootPart()
+    local humanoid = humanoidRootPart.Parent:WaitForChild("Humanoid")
+    
+    humanoid:MoveTo(targetPosition)
+    -- Optionally, you can add a delay here to control how fast the player moves
+    -- task.wait(0.5)
+end
+
+-- Function to find and move to nearby tokens
+local function moveToNearbyTokens()
+    while autoFarmEnabled do
+        local humanoidRootPart = getHumanoidRootPart()
+
+        for _, object in pairs(collectiblesParent:GetDescendants()) do
+            if not autoFarmEnabled then return end  -- Stop if auto-farm is off
+            
+            if object.Name == "C" and object:IsA("Part") and object.Transparency < 0.5 then
+                local distance = (humanoidRootPart.Position - object.Position).Magnitude
+                if distance <= teleportRadius then
+                    -- Move the character slightly inside the token
+                    local targetPosition = object.Position + Vector3.new(0, -1.5, 0)
+                    moveToToken(targetPosition)
+                    task.wait(1)  -- Delay between attempts to move to a token
+                end
+            end
+        end
+        task.wait(1)  -- Slight delay before scanning again
+    end
+end
+
+-- Toggle Auto-Farm when button is clicked
+button.MouseButton1Click:Connect(function()
+    autoFarmEnabled = not autoFarmEnabled
+    
+    if autoFarmEnabled then
+        button.Text = "Auto-Farm: ON"
+        button.BackgroundColor3 = Color3.fromRGB(0, 255, 0)  -- Green for ON
+        moveToNearbyTokens()
+    else
+        button.Text = "Auto-Farm: OFF"
+        button.BackgroundColor3 = Color3.fromRGB(255, 0, 0)  -- Red for OFF
+    end
+end)
